@@ -19,10 +19,89 @@ import {
   UserPlus,
   AlertCircle,
 } from "lucide-react";
+import { useEventManagement, Event } from "./hooks/useEventManagement";
+import { usePrayerTimeManagement, PrayerTime } from "./hooks/usePrayerTimeManagement";
+import EventModal from "./components/EventModal";
+import EventList from "./components/EventList";
+import PrayerTimeModal from "./components/PrayerTimeModal";
+import PrayerTimeList from "./components/PrayerTimeList";
 
 export default function MasjidAdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { events, createEvent, updateEvent, deleteEvent } = useEventManagement();
+  const { prayerTimes, createPrayerTime, updatePrayerTime, deletePrayerTime } =
+    usePrayerTimeManagement();
+
+  const [eventModalState, setEventModalState] = useState<{
+    isOpen: boolean;
+    mode: "create" | "edit";
+    event?: Event;
+  }>({
+    isOpen: false,
+    mode: "create",
+  });
+
+  const [prayerModalState, setPrayerModalState] = useState<{
+    isOpen: boolean;
+    mode: "create" | "edit";
+    prayer?: PrayerTime;
+  }>({
+    isOpen: false,
+    mode: "create",
+  });
+
+  const handleOpenCreateEventModal = () => {
+    setEventModalState({ isOpen: true, mode: "create" });
+  };
+
+  const handleOpenEditEventModal = (event: Event) => {
+    setEventModalState({ isOpen: true, mode: "edit", event });
+  };
+
+  const handleCloseEventModal = () => {
+    setEventModalState({ isOpen: false, mode: "create" });
+  };
+
+  const handleEventModalSubmit = (eventData: Omit<Event, "id">) => {
+    if (eventModalState.mode === "create") {
+      createEvent(eventData);
+    } else if (eventModalState.event) {
+      updateEvent(eventModalState.event.id, eventData);
+    }
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    if (confirm("Are you sure you want to delete this event?")) {
+      deleteEvent(eventId);
+    }
+  };
+
+  const handleOpenCreatePrayerModal = () => {
+    setPrayerModalState({ isOpen: true, mode: "create" });
+  };
+
+  const handleOpenEditPrayerModal = (prayer: PrayerTime) => {
+    setPrayerModalState({ isOpen: true, mode: "edit", prayer });
+  };
+
+  const handleClosePrayerModal = () => {
+    setPrayerModalState({ isOpen: false, mode: "create" });
+  };
+
+  const handlePrayerModalSubmit = (prayerData: Omit<PrayerTime, "id">) => {
+    if (prayerModalState.mode === "create") {
+      createPrayerTime(prayerData);
+    } else if (prayerModalState.prayer) {
+      updatePrayerTime(prayerModalState.prayer.id, prayerData);
+    }
+  };
+
+  const handleDeletePrayer = (prayerId: string) => {
+    if (confirm("Are you sure you want to delete this prayer time?")) {
+      deletePrayerTime(prayerId);
+    }
+  };
 
   // Sample data
   const stats = [
@@ -54,14 +133,6 @@ export default function MasjidAdminDashboard() {
       icon: Megaphone,
       color: "bg-orange-500",
     },
-  ];
-
-  const prayerTimes = [
-    { name: "Fajr", time: "5:30 AM", iqamah: "5:45 AM" },
-    { name: "Dhuhr", time: "1:15 PM", iqamah: "1:30 PM" },
-    { name: "Asr", time: "4:45 PM", iqamah: "5:00 PM" },
-    { name: "Maghrib", time: "7:20 PM", iqamah: "7:25 PM" },
-    { name: "Isha", time: "8:45 PM", iqamah: "9:00 PM" },
   ];
 
   const recentEvents = [
@@ -205,7 +276,10 @@ export default function MasjidAdminDashboard() {
                 <Bell size={20} className="text-gray-600" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+              <button
+                onClick={handleOpenCreateEventModal}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              >
                 <Plus size={20} />
                 <span>New Event</span>
               </button>
@@ -267,9 +341,9 @@ export default function MasjidAdminDashboard() {
                     </button>
                   </div>
                   <div className="space-y-4">
-                    {prayerTimes.map((prayer, index) => (
+                    {prayerTimes.slice(0, 5).map((prayer) => (
                       <div
-                        key={index}
+                        key={prayer.id}
                         className="flex items-center justify-between pb-3 border-b border-gray-100 last:border-0"
                       >
                         <div>
@@ -281,7 +355,7 @@ export default function MasjidAdminDashboard() {
                           </p>
                         </div>
                         <span className="text-emerald-600 font-semibold">
-                          {prayer.time}
+                          {prayer.adhan}
                         </span>
                       </div>
                     ))}
@@ -405,7 +479,54 @@ export default function MasjidAdminDashboard() {
             </div>
           )}
 
-          {activeTab !== "dashboard" && (
+          {activeTab === "events" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Events Management
+                  </h2>
+                  <p className="text-gray-600">
+                    Create, edit, and manage all masjid events
+                  </p>
+                </div>
+                <button
+                  onClick={handleOpenCreateEventModal}
+                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-colors"
+                >
+                  <Plus size={20} />
+                  Create Event
+                </button>
+              </div>
+              <EventList
+                events={events}
+                onEdit={handleOpenEditEventModal}
+                onDelete={handleDeleteEvent}
+                onCreateNew={handleOpenCreateEventModal}
+              />
+            </div>
+          )}
+
+          {activeTab === "prayer-times" && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Prayer Times Management
+                </h2>
+                <p className="text-gray-600">
+                  Manage daily prayer times (Adhan & Iqamah)
+                </p>
+              </div>
+              <PrayerTimeList
+                prayerTimes={prayerTimes}
+                onEdit={handleOpenEditPrayerModal}
+                onDelete={handleDeletePrayer}
+                onCreateNew={handleOpenCreatePrayerModal}
+              />
+            </div>
+          )}
+
+          {activeTab !== "dashboard" && activeTab !== "events" && activeTab !== "prayer-times" && (
             <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 rounded-full mb-4">
                 <AlertCircle className="text-emerald-600" size={32} />
@@ -424,6 +545,22 @@ export default function MasjidAdminDashboard() {
           )}
         </main>
       </div>
+
+      <EventModal
+        isOpen={eventModalState.isOpen}
+        mode={eventModalState.mode}
+        event={eventModalState.event}
+        onClose={handleCloseEventModal}
+        onSubmit={handleEventModalSubmit}
+      />
+
+      <PrayerTimeModal
+        isOpen={prayerModalState.isOpen}
+        mode={prayerModalState.mode}
+        prayer={prayerModalState.prayer}
+        onClose={handleClosePrayerModal}
+        onSubmit={handlePrayerModalSubmit}
+      />
     </div>
   );
 }
